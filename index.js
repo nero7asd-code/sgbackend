@@ -11,7 +11,6 @@ const path = require("path");
 const Console = require("./ConsoleUtils");
 const CryptoUtils = require("./CryptoUtils");
 const SharedUtils = require("./SharedUtils");
-
 const {
   BackendUtils,
   UserModel,
@@ -53,7 +52,6 @@ const PORT = process.env.PORT || 3000;
 app.get("/api/v1/ping", (req, res) => {
   res.status(200).send("OK");
 });
-
 app.post("/photon/auth", VerifyPhoton);
 app.get("/onlinecheck", OnlineCheck);
 
@@ -113,25 +111,20 @@ app.post("/user/profile", UserController.getProfile);
 app.post("/user-equipped-cosmetics/update", UserController.updateCosmetics);
 app.post("/user/cosmetics/addskin", UserController.addSkin);
 app.post("/user/cosmetics/setequipped", UserController.setEquippedCosmetic);
-
 app.get("/round/finish/:round", RoundController.finishRound);
 app.post("/round/finish/v4/:round", RoundController.finishRoundV4);
 app.post("/round/eventfinish/v4/:round", RoundController.finishRoundV4);
-
 app.get("/battlepass", BattlePassController.getBattlePass);
 app.post("/battlepass/claimv3", BattlePassController.claimReward);
 app.post("/battlepass/purchase", BattlePassController.purchaseBattlePass);
 app.post("/battlepass/complete", BattlePassController.completeBattlePass);
-
 app.get("/economy/purchase/:item", EconomyController.purchase);
 app.get("/economy/purchasegasha/:itemId/:count", EconomyController.purchaseGasha);
 app.get("/economy/purchaseluckyspin", EconomyController.purchaseLuckySpin);
 app.post("/economy/:currencyType/give/:amount", EconomyController.giveCurrency);
-
 app.get("/missions", MissionsController.getMissions);
 app.post("/missions/:missionId/rewards/claim/v2", MissionsController.claimMissionReward);
 app.post("/missions/objective/:objectiveId/:milestoneId/rewards/claim/v2", MissionsController.claimMilestoneReward);
-
 app.post("/friends/request", FriendsController.request);
 app.post("/friends/accept", FriendsController.accept);
 app.post("/friends/request/decline", FriendsController.reject);
@@ -139,22 +132,17 @@ app.post("/friends/cancel", FriendsController.cancel);
 app.get("/friends", FriendsController.list);
 app.get("/friends/request", FriendsController.pending);
 app.delete("/friends/:UserId", FriendsController.remove);
-
 app.get("/game-events/me", EventsController.getActive);
 app.get("/news/getall", NewsController.GetNews);
 app.post("/analytics", AnalyticsController.analytic);
-
 app.post("/update-crown-score", CrownController.updateScore);
 app.get("/highscore/crowns/list", CrownController.list);
-
 app.get("/social/interactions", SocialController.getInteractions);
-
 app.get("/tournamentx/active", TournamentXController.getActive.bind(TournamentXController));
 app.get("/tournamentx/active/v2", TournamentXController.getActive.bind(TournamentXController));
 app.post("/tournamentx/:tournamentId/join/v2", TournamentXController.join.bind(TournamentXController));
 app.post("/tournamentx/:tournamentId/leave", TournamentXController.leave.bind(TournamentXController));
 app.post("/tournamentx/:tournamentId/finish", TournamentXController.finish.bind(TournamentXController));
-
 app.post("/api/v1/userLoginExternal", TournamentController.login);
 app.get("/api/v1/tournaments", TournamentController.getActive);
 
@@ -162,7 +150,7 @@ app.get("/api/v1/tournaments", TournamentController.getActive);
 // ROTAS PARA O BOT DO DISCORD
 // =====================
 
-// Atualizar username (mantido, mas melhorado)
+// Atualizar username
 app.post("/user/update-username", async (req, res) => {
   try {
     const { userId, username, color } = req.body;
@@ -172,12 +160,7 @@ app.post("/user/update-username", async (req, res) => {
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
     const updateData = { username };
-
-    // Se veio cor, salva também
-    if (color) {
-      updateData.nameColor = color;        // ← Campo importante
-      // updateData.tagColor = color;      // Se preferir usar tagColor
-    }
+    if (color) updateData.nameColor = color.toUpperCase();
 
     await UserModel.update(user.stumbleId || user.deviceId, updateData);
     res.json({ success: true, username, color });
@@ -187,10 +170,10 @@ app.post("/user/update-username", async (req, res) => {
   }
 });
 
-// ==================== NOVO ENDPOINT ====================
+// Adicionar Tag com Cor (várias tentativas de campos)
 app.post("/user/add-tag", async (req, res) => {
   try {
-    const { userId, tag, color, duration } = req.body; // duration em horas
+    const { userId, tag, color, duration } = req.body;
 
     if (!userId || !tag) {
       return res.json({ success: false, message: "Faltam dados (userId e tag são obrigatórios)" });
@@ -200,16 +183,17 @@ app.post("/user/add-tag", async (req, res) => {
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
     const updateData = {
-      username: `Player ${tag}`,     // ou só o tag, depende do seu gosto
-      nameColor: color || "#FFFFFF",
-      // tagColor: color || "#FFFFFF", // descomente se seu jogo usar tagColor
+      username: `Player ${tag}`,
+      nameColor: (color || "#FFFFFF").toUpperCase(),        // Campo 1
+      tagColor: (color || "#FFFFFF").toUpperCase(),         // Campo 2
+      usernameColor: (color || "#FFFFFF").toUpperCase(),    // Campo 3
+      color: (color || "#FFFFFF").toUpperCase()             // Campo 4
     };
 
-    // Se quiser controlar duração (temporário), pode salvar data de expiração:
-    if (duration) {
-      const expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000);
+    // Salvar expiração da tag
+    if (duration && Number(duration) > 0) {
+      const expiresAt = new Date(Date.now() + Number(duration) * 60 * 60 * 1000);
       updateData.tagExpiresAt = expiresAt;
-      // Depois você pode criar uma lógica para remover tag automática
     }
 
     await UserModel.update(user.stumbleId || user.deviceId, updateData);
@@ -217,8 +201,57 @@ app.post("/user/add-tag", async (req, res) => {
     res.json({ 
       success: true, 
       message: `Tag ${tag} aplicada com sucesso`,
-      color: color 
+      tag,
+      color: color || "#FFFFFF"
     });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
+
+// Remover Tag
+app.post("/user/remove-tag", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.json({ success: false, message: "Faltam dados" });
+
+    const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
+    if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
+
+    await UserModel.update(user.stumbleId || user.deviceId, { 
+      username: "Player",
+      nameColor: "#FFFFFF",
+      tagColor: "#FFFFFF",
+      usernameColor: "#FFFFFF"
+    });
+
+    res.json({ success: true, message: "Tag removida com sucesso" });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
+
+// Adicionar Gemas
+app.post("/user/add-gems", async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount) return res.json({ success: false, message: "Faltam dados" });
+
+    const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
+    if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
+
+    const gems = user.balances.find(b => b.name === "gems");
+    const newAmount = (gems ? gems.amount : 0) + parseInt(amount);
+
+    if (gems) {
+      await UserModel.update(user.stumbleId || user.deviceId, { "balances.$[elem].amount": newAmount }, { arrayFilters: [{ "elem.name": "gems" }] });
+    } else {
+      await UserModel.update(user.stumbleId || user.deviceId, { $push: { balances: { name: "gems", amount: parseInt(amount) } } });
+    }
+
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
