@@ -101,7 +101,6 @@ class CrownController {
 // ROTAS PRINCIPAIS
 // =====================
 app.get("/matchmaking/filter", MatchmakingController.getMatchmakingFilter);
-
 app.post("/user/login", UserController.login);
 app.get("/user/config", sendShared);
 app.get("/usersettings", UserController.getSettings);
@@ -170,9 +169,8 @@ app.post("/user/update-username", async (req, res) => {
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
-    user.username = username;
-    await user.save();
-    res.json({ success: true, username: user.username });
+    await UserModel.update(user.stumbleId || user.deviceId, { username });
+    res.json({ success: true, username });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
@@ -188,13 +186,14 @@ app.post("/user/add-gems", async (req, res) => {
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
     const gems = user.balances.find(b => b.name === "gems");
+    const newAmount = (gems ? gems.amount : 0) + parseInt(amount);
+
     if (gems) {
-      gems.amount += parseInt(amount);
+      await UserModel.update(user.stumbleId || user.deviceId, { "balances.$[elem].amount": newAmount }, { arrayFilters: [{ "elem.name": "gems" }] });
     } else {
-      user.balances.push({ name: "gems", amount: parseInt(amount) });
+      await UserModel.update(user.stumbleId || user.deviceId, { $push: { balances: { name: "gems", amount: parseInt(amount) } } });
     }
 
-    await user.save();
     res.json({ success: true });
   } catch (err) {
     console.error(err);
