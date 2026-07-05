@@ -6,7 +6,7 @@ const express = require("express");
 const path = require("path");
 
 // =====================
-// UTILS (confere os nomes dos arquivos!)
+// UTILS
 // =====================
 const Console = require("./ConsoleUtils");
 const CryptoUtils = require("./CryptoUtils");
@@ -69,19 +69,15 @@ class CrownController {
   static async updateScore(req, res) {
     try {
       const { deviceid, username } = req.body;
-
       if (!deviceid || !username) {
         return res.status(400).json({ error: "Missing fields" });
       }
-
       const user = await UserModel.findByDeviceId(deviceid);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-
       const newCrowns = (user.crowns || 0) + 1;
       await UserModel.update(user.stumbleId, { crowns: newCrowns });
-
       res.json({ success: true, crowns: newCrowns });
     } catch (err) {
       console.error(err);
@@ -92,14 +88,7 @@ class CrownController {
   static async list(req, res) {
     try {
       const { country = "", start = 0, count = 50 } = req.query;
-
-      const data = await UserModel.GetHighscore(
-        "crowns",
-        country,
-        Number(start),
-        Number(count)
-      );
-
+      const data = await UserModel.GetHighscore("crowns", country, Number(start), Number(count));
       res.json(data);
     } catch (err) {
       console.error(err);
@@ -109,7 +98,7 @@ class CrownController {
 }
 
 // =====================
-// ROTAS
+// ROTAS PRINCIPAIS
 // =====================
 app.get("/matchmaking/filter", MatchmakingController.getMatchmakingFilter);
 
@@ -142,10 +131,7 @@ app.post("/economy/:currencyType/give/:amount", EconomyController.giveCurrency);
 
 app.get("/missions", MissionsController.getMissions);
 app.post("/missions/:missionId/rewards/claim/v2", MissionsController.claimMissionReward);
-app.post(
-  "/missions/objective/:objectiveId/:milestoneId/rewards/claim/v2",
-  MissionsController.claimMilestoneReward
-);
+app.post("/missions/objective/:objectiveId/:milestoneId/rewards/claim/v2", MissionsController.claimMilestoneReward);
 
 app.post("/friends/request", FriendsController.request);
 app.post("/friends/accept", FriendsController.accept);
@@ -157,7 +143,6 @@ app.delete("/friends/:UserId", FriendsController.remove);
 
 app.get("/game-events/me", EventsController.getActive);
 app.get("/news/getall", NewsController.GetNews);
-
 app.post("/analytics", AnalyticsController.analytic);
 
 app.post("/update-crown-score", CrownController.updateScore);
@@ -173,6 +158,49 @@ app.post("/tournamentx/:tournamentId/finish", TournamentXController.finish.bind(
 
 app.post("/api/v1/userLoginExternal", TournamentController.login);
 app.get("/api/v1/tournaments", TournamentController.getActive);
+
+// =====================
+// ROTAS PARA O BOT DO DISCORD
+// =====================
+app.post("/user/update-username", async (req, res) => {
+  try {
+    const { userId, username } = req.body;
+    if (!userId || !username) return res.json({ success: false, message: "Faltam dados" });
+
+    const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
+    if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
+
+    user.username = username;
+    await user.save();
+    res.json({ success: true, username: user.username });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
+
+app.post("/user/add-gems", async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount) return res.json({ success: false, message: "Faltam dados" });
+
+    const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
+    if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
+
+    const gems = user.balances.find(b => b.name === "gems");
+    if (gems) {
+      gems.amount += parseInt(amount);
+    } else {
+      user.balances.push({ name: "gems", amount: parseInt(amount) });
+    }
+
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
 
 // =====================
 // ERROR HANDLER
