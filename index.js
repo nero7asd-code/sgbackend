@@ -161,40 +161,64 @@ app.get("/api/v1/tournaments", TournamentController.getActive);
 // =====================
 // ROTAS PARA O BOT DO DISCORD
 // =====================
+
+// Atualizar username (mantido, mas melhorado)
 app.post("/user/update-username", async (req, res) => {
   try {
-    const { userId, username } = req.body;
+    const { userId, username, color } = req.body;
     if (!userId || !username) return res.json({ success: false, message: "Faltam dados" });
 
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
-    await UserModel.update(user.stumbleId || user.deviceId, { username });
-    res.json({ success: true, username });
+    const updateData = { username };
+
+    // Se veio cor, salva também
+    if (color) {
+      updateData.nameColor = color;        // ← Campo importante
+      // updateData.tagColor = color;      // Se preferir usar tagColor
+    }
+
+    await UserModel.update(user.stumbleId || user.deviceId, updateData);
+    res.json({ success: true, username, color });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
   }
 });
 
-app.post("/user/add-gems", async (req, res) => {
+// ==================== NOVO ENDPOINT ====================
+app.post("/user/add-tag", async (req, res) => {
   try {
-    const { userId, amount } = req.body;
-    if (!userId || !amount) return res.json({ success: false, message: "Faltam dados" });
+    const { userId, tag, color, duration } = req.body; // duration em horas
+
+    if (!userId || !tag) {
+      return res.json({ success: false, message: "Faltam dados (userId e tag são obrigatórios)" });
+    }
 
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
 
-    const gems = user.balances.find(b => b.name === "gems");
-    const newAmount = (gems ? gems.amount : 0) + parseInt(amount);
+    const updateData = {
+      username: `Player ${tag}`,     // ou só o tag, depende do seu gosto
+      nameColor: color || "#FFFFFF",
+      // tagColor: color || "#FFFFFF", // descomente se seu jogo usar tagColor
+    };
 
-    if (gems) {
-      await UserModel.update(user.stumbleId || user.deviceId, { "balances.$[elem].amount": newAmount }, { arrayFilters: [{ "elem.name": "gems" }] });
-    } else {
-      await UserModel.update(user.stumbleId || user.deviceId, { $push: { balances: { name: "gems", amount: parseInt(amount) } } });
+    // Se quiser controlar duração (temporário), pode salvar data de expiração:
+    if (duration) {
+      const expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000);
+      updateData.tagExpiresAt = expiresAt;
+      // Depois você pode criar uma lógica para remover tag automática
     }
 
-    res.json({ success: true });
+    await UserModel.update(user.stumbleId || user.deviceId, updateData);
+
+    res.json({ 
+      success: true, 
+      message: `Tag ${tag} aplicada com sucesso`,
+      color: color 
+    });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
