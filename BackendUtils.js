@@ -59,7 +59,7 @@ const BackendUtils = {
 class Database {
   constructor() {
     this.mongoUri = process.env.mongoUri;
-    this.dbName = 'StumbleCash64';
+    this.dbName = 'StumbleEvil';
     this.client = null;
     this.db = null;
     this.collections = {
@@ -217,7 +217,7 @@ class UserModel {
   static async create(deviceId, platformData = {}) {
     const now = new Date();
     const userId = Math.floor(Math.random() * 1000);
-    const username = `.gg/sgcash<color=orange><sup>#${userId}`;
+    const username = `.gg/sgevil<color=orange><sup>#${userId}`;
 
     const user = {
       id: userId,
@@ -1875,7 +1875,7 @@ class TournamentXController {
       minVersion: "0.56",
       startTime: new Date(),
       endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      nameKey: "(.gg/sgcash) Block Dash 1v1",
+      nameKey: "(.gg/sgevil) Block Dash 1v1",
       descriptionKey: "Practice your skills in the Stumble Cash TournamentX! mode!",
       listItemBackgroundImage: "SharkTanic_Background_Image_Tournaments_Card",
       detailsPanelBackgroundImage: "SharkTanic_Background_Image_Tournaments",
@@ -1929,7 +1929,7 @@ class TournamentXController {
       minVersion: "0.56",
       startTime: new Date(),
       endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      nameKey: "(.gg/sgcash) Block Dash Legendary 1v1",
+      nameKey: "(.gg/sgevil) Block Dash Legendary 1v1",
       descriptionKey: "Practice your skills in the Stumble Cash TournamentX! mode!",
       listItemBackgroundImage: "AbductedAvenue_Background_Image_Tournaments_Card",
       detailsPanelBackgroundImage: "Barbie_Background_Image_Tournaments",
