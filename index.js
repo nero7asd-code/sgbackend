@@ -4,7 +4,6 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-
 // =====================
 // UTILS
 // =====================
@@ -33,19 +32,16 @@ const {
   OnlineCheck,
   VerifyPhoton
 } = require("./BackendUtils");
-
 // =====================
 // APP
 // =====================
 const app = express();
 app.use(express.json());
-
 // =====================
 // CONFIG
 // =====================
 const TITLE = "Stumble Peak " + (process.env.VERSION || "dev");
 const PORT = process.env.PORT || 3000;
-
 // =====================
 // ROTAS PÚBLICAS
 // =====================
@@ -54,12 +50,10 @@ app.get("/api/v1/ping", (req, res) => {
 });
 app.post("/photon/auth", VerifyPhoton);
 app.get("/onlinecheck", OnlineCheck);
-
 // =====================
 // AUTH GLOBAL
 // =====================
 app.use(authenticate);
-
 // =====================
 // CONTROLLER LOCAL
 // =====================
@@ -82,7 +76,6 @@ class CrownController {
       res.status(500).json({ error: "Internal server error" });
     }
   }
-
   static async list(req, res) {
     try {
       const { country = "", start = 0, count = 50 } = req.query;
@@ -94,7 +87,6 @@ class CrownController {
     }
   }
 }
-
 // =====================
 // ROTAS PRINCIPAIS
 // =====================
@@ -145,23 +137,18 @@ app.post("/tournamentx/:tournamentId/leave", TournamentXController.leave.bind(To
 app.post("/tournamentx/:tournamentId/finish", TournamentXController.finish.bind(TournamentXController));
 app.post("/api/v1/userLoginExternal", TournamentController.login);
 app.get("/api/v1/tournaments", TournamentController.getActive);
-
 // =====================
 // ROTAS PARA O BOT DO DISCORD
 // =====================
-
 // Atualizar username
 app.post("/user/update-username", async (req, res) => {
   try {
     const { userId, username, color } = req.body;
     if (!userId || !username) return res.json({ success: false, message: "Faltam dados" });
-
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
-
     const updateData = { username };
     if (color) updateData.nameColor = color.toUpperCase();
-
     await UserModel.update(user.stumbleId || user.deviceId, updateData);
     res.json({ success: true, username, color });
   } catch (err) {
@@ -169,37 +156,30 @@ app.post("/user/update-username", async (req, res) => {
     res.json({ success: false, message: "Erro interno" });
   }
 });
-
 // Adicionar Tag com Cor (várias tentativas de campos)
 app.post("/user/add-tag", async (req, res) => {
   try {
     const { userId, tag, color, duration } = req.body;
-
     if (!userId || !tag) {
       return res.json({ success: false, message: "Faltam dados (userId e tag são obrigatórios)" });
     }
-
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
-
     const updateData = {
       username: `Player ${tag}`,
-      nameColor: (color || "#FFFFFF").toUpperCase(),        // Campo 1
-      tagColor: (color || "#FFFFFF").toUpperCase(),         // Campo 2
-      usernameColor: (color || "#FFFFFF").toUpperCase(),    // Campo 3
-      color: (color || "#FFFFFF").toUpperCase()             // Campo 4
+      nameColor: (color || "#FFFFFF").toUpperCase(), // Campo 1
+      tagColor: (color || "#FFFFFF").toUpperCase(), // Campo 2
+      usernameColor: (color || "#FFFFFF").toUpperCase(), // Campo 3
+      color: (color || "#FFFFFF").toUpperCase() // Campo 4
     };
-
     // Salvar expiração da tag
     if (duration && Number(duration) > 0) {
       const expiresAt = new Date(Date.now() + Number(duration) * 60 * 60 * 1000);
       updateData.tagExpiresAt = expiresAt;
     }
-
     await UserModel.update(user.stumbleId || user.deviceId, updateData);
-
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Tag ${tag} aplicada com sucesso`,
       tag,
       color: color || "#FFFFFF"
@@ -209,60 +189,172 @@ app.post("/user/add-tag", async (req, res) => {
     res.json({ success: false, message: "Erro interno" });
   }
 });
-
 // Remover Tag
 app.post("/user/remove-tag", async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) return res.json({ success: false, message: "Faltam dados" });
-
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
-
-    await UserModel.update(user.stumbleId || user.deviceId, { 
+    await UserModel.update(user.stumbleId || user.deviceId, {
       username: "Player",
       nameColor: "#FFFFFF",
       tagColor: "#FFFFFF",
       usernameColor: "#FFFFFF"
     });
-
     res.json({ success: true, message: "Tag removida com sucesso" });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
   }
 });
-
 // Adicionar Gemas
 app.post("/user/add-gems", async (req, res) => {
   try {
     const { userId, amount } = req.body;
     if (!userId || !amount) return res.json({ success: false, message: "Faltam dados" });
-
     const user = await UserModel.findById(userId) || await UserModel.findByDeviceId(userId);
     if (!user) return res.json({ success: false, message: "Usuário não encontrado" });
-
     const gems = user.balances.find(b => b.name === "gems");
     const newAmount = (gems ? gems.amount : 0) + parseInt(amount);
-
     if (gems) {
       await UserModel.update(user.stumbleId || user.deviceId, { "balances.$[elem].amount": newAmount }, { arrayFilters: [{ "elem.name": "gems" }] });
     } else {
       await UserModel.update(user.stumbleId || user.deviceId, { $push: { balances: { name: "gems", amount: parseInt(amount) } } });
     }
-
     res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.json({ success: false, message: "Erro interno" });
   }
 });
+// =====================
+// ROTAS ADMIN (compatíveis com o bot Discord)
+// =====================
+app.post("/user/admin/setnick", async (req, res) => {
+  try {
+    const { DeviceToken, NewUsername } = req.body;
+    if (!DeviceToken || !NewUsername) {
+      return res.json({ success: false, message: "Faltam DeviceToken ou NewUsername" });
+    }
 
+    const user = await UserModel.findById(DeviceToken) || await UserModel.findByDeviceId(DeviceToken);
+    if (!user) {
+      return res.json({ success: false, message: "Usuário não encontrado" });
+    }
+
+    const oldUsername = user.username || user.Username || "Desconhecido";
+    const updateData = { username: NewUsername };
+
+    // Se vier no formato <color=#HEX>nome</color>, extrai a cor
+    const colorMatch = NewUsername.match(/<color=(#[0-9A-Fa-f]{6})>/i);
+    if (colorMatch) {
+      updateData.nameColor = colorMatch[1].toUpperCase();
+      updateData.tagColor = colorMatch[1].toUpperCase();
+      updateData.usernameColor = colorMatch[1].toUpperCase();
+      updateData.color = colorMatch[1].toUpperCase();
+    }
+
+    await UserModel.update(user.stumbleId || user.deviceId, updateData);
+
+    res.json({
+      success: true,
+      oldUsername,
+      old_name: oldUsername,
+      newUsername: NewUsername
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
+
+app.post("/user/admin/setgems", async (req, res) => {
+  try {
+    const { DeviceToken, Gems } = req.body;
+    if (!DeviceToken || Gems === undefined || Gems === null) {
+      return res.json({ success: false, message: "Faltam DeviceToken ou Gems" });
+    }
+
+    const amount = parseInt(Gems);
+    if (isNaN(amount) || amount < 0) {
+      return res.json({ success: false, message: "Gems inválida" });
+    }
+
+    const user = await UserModel.findById(DeviceToken) || await UserModel.findByDeviceId(DeviceToken);
+    if (!user) {
+      return res.json({ success: false, message: "Usuário não encontrado" });
+    }
+
+    const gemsBalance = user.balances?.find(b => b.name === "gems");
+    const oldGems = gemsBalance ? gemsBalance.amount : 0;
+
+    if (gemsBalance) {
+      await UserModel.update(
+        user.stumbleId || user.deviceId,
+        { "balances.$[elem].amount": amount },
+        { arrayFilters: [{ "elem.name": "gems" }] }
+      );
+    } else {
+      await UserModel.update(
+        user.stumbleId || user.deviceId,
+        { $push: { balances: { name: "gems", amount } } }
+      );
+    }
+
+    res.json({
+      success: true,
+      oldGems,
+      user: { Username: user.username || user.Username || "Desconhecido" }
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
+
+app.post("/user/admin/settag", async (req, res) => {
+  try {
+    const { DeviceToken, Tag, Color } = req.body;
+    if (!DeviceToken || !Tag) {
+      return res.json({ success: false, message: "Faltam DeviceToken ou Tag" });
+    }
+
+    const user = await UserModel.findById(DeviceToken) || await UserModel.findByDeviceId(DeviceToken);
+    if (!user) {
+      return res.json({ success: false, message: "Usuário não encontrado" });
+    }
+
+    const color = (Color || "#eb4034").toUpperCase();
+    const oldUsername = user.username || user.Username || "Desconhecido";
+    const newUsername = `Player ${Tag}`;
+
+    const updateData = {
+      username: newUsername,
+      nameColor: color,
+      tagColor: color,
+      usernameColor: color,
+      color: color
+    };
+
+    await UserModel.update(user.stumbleId || user.deviceId, updateData);
+
+    res.json({
+      success: true,
+      oldUsername,
+      newUsername,
+      tag: Tag,
+      color
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Erro interno" });
+  }
+});
 // =====================
 // ERROR HANDLER
 // =====================
 app.use(errorControll);
-
 // =====================
 // START
 // =====================
