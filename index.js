@@ -40,7 +40,7 @@ app.use(express.json());
 // =====================
 // CONFIG
 // =====================
-const TITLE = "Stumble Peak " + (process.env.VERSION || "dev");
+const TITLE = "Stumble World " + (process.env.VERSION || "dev");
 const PORT = process.env.PORT || 3000;
 // =====================
 // ROTAS PÚBLICAS
